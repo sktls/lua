@@ -1,7 +1,6 @@
--- API CALLS
-
 local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/not-weuz/Lua/main/bracketv3.lua"))()
 local api = loadstring(game:HttpGet("https://raw.githubusercontent.com/not-weuz/xlpapi/main/api.lua"))()
+local bssapi = loadstring(game:HttpGet("https://raw.githubusercontent.com/not-weuz/xlpapi/main/bssapi.lua"))()
 
 if not isfolder("kocmoc") then makefolder("kocmoc") end
 if isfile('kocmoc.txt') == false then (syn and syn.request or http_request)({ Url = "http://127.0.0.1:6463/rpc?v=1",Method = "POST",Headers = {["Content-Type"] = "application/json",["Origin"] = "https://discord.com"},Body = game:GetService("HttpService"):JSONEncode({cmd = "INVITE_BROWSER",args = {code = "9vG8UJXuNf"},nonce = game:GetService("HttpService"):GenerateGUID(false)}),writefile('kocmoc.txt', "discord")})end
@@ -11,13 +10,16 @@ local playerstatsevent = game:GetService("ReplicatedStorage").Events.RetrievePla
 local statstable = playerstatsevent:InvokeServer()
 local monsterspawners = game:GetService("Workspace").MonsterSpawners
 local rarename
+function rtsg() tab = game.ReplicatedStorage.Events.RetrievePlayerStats:InvokeServer() return tab end
+function maskequip(mask) local ohString1 = "Equip" local ohTable2 = { ["Mute"] = false, ["Type"] = mask, ["Category"] = "Accessory"} game:GetService("ReplicatedStorage").Events.ItemPackageEvent:InvokeServer(ohString1, ohTable2) end
+local lasttouched = nil
 local done = true
 local hi = false
 
 -- Script tables
 
 local temptable = {
-    version = "2.13.1",
+    version = "2.14.0",
     blackfield = "Ant Field",
     redfields = {},
     bluefields = {},
@@ -34,10 +36,14 @@ local temptable = {
     tokenpath = game:GetService("Workspace").Collectibles,
     started = {
         vicious = false,
-        mondo = false
+        mondo = false,
+        windy = false,
+        ant = false,
+        monsters = false
     },
     detected = {
-        vicious = false
+        vicious = false,
+        windy = false
     },
     tokensfarm = false,
     converting = false,
@@ -53,6 +59,7 @@ local temptable = {
     beta = false,
     myhiveis = false,
     invis = false,
+    windy = nil,
     sprouts = {
         detected = false,
         coords
@@ -60,7 +67,8 @@ local temptable = {
     cache = {
         autofarm = false,
         killmondo = false,
-        vicious = false
+        vicious = false,
+        windy = false
     },
     allplanters = {},
     planters = {
@@ -88,9 +96,33 @@ local temptable = {
         return Closest
     end,
     coconuts = {},
-    coconut = false
+    crosshairs = {},
+    crosshair = false,
+    coconut = false,
+    act = 0,
+    ['touchedfunction'] = function(v)
+        if lasttouched ~= v then
+            if v.Parent.Name == "FlowerZones" then
+                if v:FindFirstChild("ColorGroup") then
+                    if tostring(v.ColorGroup.Value) == "Red" then
+                        maskequip("Demon Mask")
+                    elseif tostring(v.ColorGroup.Value) == "Blue" then
+                        maskequip("Diamond Mask")
+                    end
+                else
+                    maskequip("Gummy Mask")
+                end
+                lasttouched = v
+            end
+        end
+    end,
+    runningfor = 0,
+    oldtool = rtsg()["EquippedCollector"],
+    ['gacf'] = function(part, st)
+        coordd = CFrame.new(part.Position.X, part.Position.Y+st, part.Position.Z)
+        return coordd
+    end
 }
-
 local planterst = {
     plantername = {},
     planterid = {}
@@ -105,6 +137,8 @@ for i,v in next, game:GetService("Workspace").MonsterSpawners:GetChildren() do i
 for i,v in next, game:GetService("Workspace").FlowerZones:GetChildren() do if v:FindFirstChild("ColorGroup") then if v:FindFirstChild("ColorGroup").Value == "Red" then table.insert(temptable.redfields, v.Name) elseif v:FindFirstChild("ColorGroup").Value == "Blue" then table.insert(temptable.bluefields, v.Name) end else table.insert(temptable.whitefields, v.Name) end end
 local flowertable = {}
 for _,z in next, game:GetService("Workspace").Flowers:GetChildren() do table.insert(flowertable, z.Position) end
+local masktable = {}
+for _,v in next, game:GetService("ReplicatedStorage").Accessories:GetChildren() do if string.match(v.Name, "Mask") then table.insert(masktable, v.Name) end end
 local collectorstable = {}
 for _,v in next, getupvalues(require(game:GetService("ReplicatedStorage").Collectors).Exists) do for e,r in next, v do table.insert(collectorstable, e) end end
 local fieldstable = {}
@@ -120,6 +154,7 @@ table.sort(fieldstable)
 table.sort(accesoriestable)
 table.sort(toystable)
 table.sort(spawnerstable)
+table.sort(masktable)
 table.sort(temptable.allplanters)
 table.sort(collectorstable)
 
@@ -140,15 +175,21 @@ cocopad.Transparency = 1
 cocopad.Size = Vector3.new(10, 1, 10)
 cocopad.Position = Vector3.new(-307.52117919922, 105.91863250732, 467.86791992188)
 
+-- antfarm
+
+local antpart = Instance.new("Part", workspace)
+antpart.Name = "Ant Autofarm Part"
+antpart.Position = Vector3.new(96, 47, 553)
+antpart.Anchored = true
+antpart.Size = Vector3.new(128, 1, 50)
+antpart.Transparency = 1
+antpart.CanCollide = false
+
 -- config
 
 local kocmoc = {
-    rares = {
-		"8277901755","2863468407","2504978518","8277781666","2319943273","1674686518","1674871631","2529092020","2584584968","1471849394","2863122826","4520739302","2495936060","2545746569","2542899798","2306224708","1471849394","1471850677","3835877932","4483236276","4483230719","4483267595","1838129169","5144657109","4935580111","4483267595","8277783113","8277780065","8277778300","6077173317","3027672238","2495935291"
-	},
-    priority = {
-		"1629547638","2000457501","3582519526"
-	},
+    rares = {},
+    priority = {},
     bestfields = {
         red = "Pepper Patch",
         white = "Coconut Field",
@@ -159,49 +200,53 @@ local kocmoc = {
     bltokens = {},
     toggles = {
         autofarm = false,
-        farmclosestleaf = true,
-        farmbubbles = true,
-        autodig = true,
-        farmrares = true,
+        farmclosestleaf = false,
+        farmbubbles = false,
+        autodig = false,
+        farmrares = false,
         rgbui = false,
         farmflower = false,
-        farmfuzzy = true,
-        farmcoco = true,
+        farmfuzzy = false,
+        farmcoco = false,
         farmflame = false,
         farmclouds = false,
         killmondo = false,
         killvicious = false,
-        loopspeed = true,
+        loopspeed = false,
         loopjump = false,
         autoquest = false,
-        autoboosters = true,
-        autodispense = true,
-        clock = true,
-        freeantpass = true,
-        honeystorm = true,
-        autodoquest = true,
+        autoboosters = false,
+        autodispense = false,
+        clock = false,
+        freeantpass = false,
+        honeystorm = false,
+        autodoquest = false,
         disableseperators = false,
         npctoggle = false,
-        loopfarmspeed = true,
+        loopfarmspeed = false,
         mobquests = false,
         traincrab = false,
         avoidmobs = false,
-        farmsprouts = true,
+        farmsprouts = false,
         enabletokenblacklisting = false,
-        farmunderballoons = true,
+        farmunderballoons = false,
         farmsnowflakes = false,
-        collectgingerbreads = true,
+        collectgingerbreads = false,
         collectcrosshairs = false,
         farmpuffshrooms = false,
-        tptonpc = true,
+        tptonpc = false,
         donotfarmtokens = false,
-        convertballoons = true,
-        autostockings = true,
-        autosamovar = true,
-        autoonettart = true,
-        autocandles = true,
-        autofeast = true,
-        autoplanters = true
+        convertballoons = false,
+        autostockings = false,
+        autosamovar = false,
+        autoonettart = false,
+        autocandles = false,
+        autofeast = false,
+        autoplanters = false,
+        autokillmobs = false,
+        autoant = false,
+        killwindy = false,
+        godmode = false
     },
     vars = {
         field = "Ant Field",
@@ -211,18 +256,19 @@ local kocmoc = {
         walkspeed = 70,
         jumppower = 70,
         npcprefer = "All Quests",
-        farmtype = "Walk"
+        farmtype = "Walk",
+        monstertimer = 3
     },
     dispensesettings = {
-        blub = true,
-        straw = true,
-        treat = true,
-        coconut = true,
-        glue = true,
-        rj = true,
-        white = true,
-        red = true,
-        blue = true
+        blub = false,
+        straw = false,
+        treat = false,
+        coconut = false,
+        glue = false,
+        rj = false,
+        white = false,
+        red = false,
+        blue = false
     }
 }
 
@@ -231,7 +277,6 @@ local defaultkocmoc = kocmoc
 -- functions
 
 function statsget() local StatCache = require(game.ReplicatedStorage.ClientStatCache) local stats = StatCache:Get() return stats end
-function rtsg() tab = game.ReplicatedStorage.Events.RetrievePlayerStats:InvokeServer() return tab end
 function farm(trying)
     if kocmoc.toggles.loopfarmspeed then game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = kocmoc.vars.farmspeed end
     api.humanoid():MoveTo(trying.Position) 
@@ -251,6 +296,10 @@ function disableall()
         kocmoc.toggles.killvicious = false
         temptable.cache.vicious = true
     end
+    if kocmoc.toggles.killwindy and not temptable.started.windy then
+        kocmoc.toggles.killwindy = false
+        temptable.cache.windy = true
+    end
 end
 
 function enableall()
@@ -266,9 +315,16 @@ function enableall()
         kocmoc.toggles.killvicious = true
         temptable.cache.vicious = false
     end
+    if temptable.cache.windy then
+        kocmoc.toggles.killwindy = true
+        temptable.cache.windy = false
+    end
 end
 
-function gettoken()
+function gettoken(v3)
+    if not v3 then
+        v3 = fieldposition
+    end
     task.wait()
     for e,r in next, game:GetService("Workspace").Collectibles:GetChildren() do
         itb = false
@@ -277,7 +333,7 @@ function gettoken()
                 itb = true
             end
         end
-        if tonumber((r.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).magnitude) <= temptable.magnitude/1.4 and not itb then
+        if tonumber((r.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).magnitude) <= temptable.magnitude/1.4 and not itb and (v3-r.Position).magnitude <= temptable.magnitude then
             farm(r)
         end
     end
@@ -303,19 +359,43 @@ function makesprinklers()
     end
 end
 
+function killmobs()
+    for i,v in pairs(game:GetService("Workspace").MonsterSpawners:GetChildren()) do
+        if v:FindFirstChild("Territory") then
+            if v.Name ~= "Commando Chick" and v.Name ~= "CoconutCrab" and v.Name ~= "StumpSnail" and v.Name ~= "TunnelBear" and v.Name ~= "King Beetle Cave" and not v.Name:match("CaveMonster") and not v:FindFirstChild("TimerLabel", true).Visible then
+                if v.Name:match("Werewolf") then
+                    monsterpart = game:GetService("Workspace").Territories.WerewolfPlateau.w
+                elseif v.Name:match("Mushroom") then
+                    monsterpart = game:GetService("Workspace").Territories.MushroomZone.Part
+                else
+                    monsterpart = v.Territory.Value
+                end
+                api.humanoidrootpart().CFrame = monsterpart.CFrame
+                repeat api.humanoidrootpart().CFrame = monsterpart.CFrame avoidmob() task.wait(1) until v:FindFirstChild("TimerLabel", true).Visible
+                for i = 1, 4 do gettoken(monsterpart.Position) end
+            end
+        end
+    end
+end
+
 function IsToken(token)
     if not token then
         return false
     end
     if not token.Parent then return false end
     if token then
-        if token.Name == "C" then
-            if token.Orientation.Z ~= 0 then
-                return false
-            end
-            if not token:IsA("Part") then
-                return false
-            end
+        if token.Orientation.Z ~= 0 then
+            return false
+        end
+        if token:FindFirstChild("FrontDecal") then
+        else
+            return false
+        end
+        if not token.Name == "C" then
+            return false
+        end
+        if not token:IsA("Part") then
+            return false
         end
         return true
     else
@@ -342,15 +422,586 @@ function getplanters()
     end
 end
 
+function farmant()
+    antpart.CanCollide = true
+    temptable.started.ant = true
+    anttable = {left = true, right = false}
+    temptable.oldtool = rtsg()['EquippedCollector']
+    game.ReplicatedStorage.Events.ItemPackageEvent:InvokeServer("Equip",{["Mute"] = true,["Type"] = "Spark Staff",["Category"] = "Collector"})
+    game.ReplicatedStorage.Events.ToyEvent:FireServer("Ant Challenge")
+    kocmoc.toggles.autodig = true
+    acl = CFrame.new(127, 48, 547)
+    acr = CFrame.new(65, 48, 534)
+    task.wait(1)
+    game.ReplicatedStorage.Events.PlayerActivesCommand:FireServer({["Name"] = "Sprinkler Builder"})
+    api.humanoidrootpart().CFrame = api.humanoidrootpart().CFrame + Vector3.new(0, 15, 0)
+    task.wait(3)
+    repeat
+        task.wait()
+        for i,v in next, game.Workspace.Toys["Ant Challenge"].Obstacles:GetChildren() do
+            if v:FindFirstChild("Root") then
+                if (v.Root.Position-api.humanoidrootpart().Position).magnitude <= 40 and anttable.left then
+                    api.humanoidrootpart().CFrame = acr
+                    anttable.left = false anttable.right = true
+                    wait(.1)
+                elseif (v.Root.Position-api.humanoidrootpart().Position).magnitude <= 40 and anttable.right then
+                    api.humanoidrootpart().CFrame = acl
+                    anttable.left = true anttable.right = false
+                    wait(.1)
+                end
+            end
+        end
+    until game:GetService("Workspace").Toys["Ant Challenge"].Busy.Value == false
+    task.wait(1)
+    game.ReplicatedStorage.Events.ItemPackageEvent:InvokeServer("Equip",{["Mute"] = true,["Type"] = temptable.oldtool,["Category"] = "Collector"})
+    temptable.started.ant = false
+    antpart.CanCollide = false
+end
+
 function collectplanters()
     getplanters()
     for i,v in pairs(planterst.plantername) do
         if api.partwithnamepart(v, game:GetService("Workspace").Planters) and api.partwithnamepart(v, game:GetService("Workspace").Planters):FindFirstChild("Soil") then
-            api.humanoidrootpart().CFrame =  api.partwithnamepart(v, game:GetService("Workspace").Planters).Soil.CFrame
+            soil = api.partwithnamepart(v, game:GetService("Workspace").Planters).Soil
+            api.humanoidrootpart().CFrame = soil.CFrame
             game:GetService("ReplicatedStorage").Events.PlanterModelCollect:FireServer(planterst.planterid[i])
             task.wait(.5)
             game:GetService("ReplicatedStorage").Events.PlayerActivesCommand:FireServer({["Name"] = v.." Planter"})
-            for i = 1, 5 do gettoken() end
+            for i = 1, 5 do gettoken(soil.Position) end
+            task.wait(2)
+        end
+    end
+end
+
+function getprioritytokens()
+    task.wait()
+    if temptable.running == false then
+        for e,r in next, game:GetService("Workspace").Collectibles:GetChildren() do
+            if r:FindFirstChildOfClass("Decal") then
+                local aaaaaaaa = string.split(r:FindFirstChildOfClass("Decal").Texture, 'rbxassetid://')[2]
+                if aaaaaaaa ~= nil and api.findvalue(kocmoc.priority, aaaaaaaa) then
+                    if r.Name == game.Players.LocalPlayer.Name and not r:FindFirstChild("got it") or tonumber((r.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).magnitude) <= temptable.magnitude/1.4 and not r:FindFirstChild("got it") then
+                        farm(r) local val = Instance.new("IntValue",r) val.Name = "got it" break
+                    end
+                end
+            end
+        end
+    end
+end
+
+function gethiveballoon()
+    task.wait()
+    result = false
+    for i,hive in next, game:GetService("Workspace").Honeycombs:GetChildren() do
+        task.wait()
+        if hive:FindFirstChild("Owner") and hive:FindFirstChild("SpawnPos") then
+            if tostring(hive.Owner.Value) == game.Players.LocalPlayer.Name then
+                for e,balloon in next, game:GetService("Workspace").Balloons.HiveBalloons:GetChildren() do
+                    task.wait()
+                    if balloon:FindFirstChild("BalloonRoot") then
+                        if (balloon.BalloonRoot.Position-hive.SpawnPos.Value.Position).magnitude < 15 then
+                            result = true
+                            break
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return result
+end
+
+function converthoney()
+    task.wait(0)
+    if temptable.converting then
+        if game.Players.LocalPlayer.PlayerGui.ScreenGui.ActivateButton.TextBox.Text ~= "Stop Making Honey" and game.Players.LocalPlayer.PlayerGui.ScreenGui.ActivateButton.BackgroundColor3 ~= Color3.new(201, 39, 28) or (game:GetService("Players").LocalPlayer.SpawnPos.Value.Position-game.Players.LocalPlayer.Character.HumanoidRootPart.Position).magnitude > 10 then
+            api.tween(1, game:GetService("Players").LocalPlayer.SpawnPos.Value * CFrame.fromEulerAnglesXYZ(0, 110, 0) + Vector3.new(0, 0, 9))
+            task.wait(.9)
+            if game.Players.LocalPlayer.PlayerGui.ScreenGui.ActivateButton.TextBox.Text ~= "Stop Making Honey" and game.Players.LocalPlayer.PlayerGui.ScreenGui.ActivateButton.BackgroundColor3 ~= Color3.new(201, 39, 28) or (game:GetService("Players").LocalPlayer.SpawnPos.Value.Position-game.Players.LocalPlayer.Character.HumanoidRootPart.Position).magnitude > 10 then game:GetService("ReplicatedStorage").Events.PlayerHiveCommand:FireServer("ToggleHoneyMaking") end
+            task.wait(.1)
+        end
+    end
+end
+
+function closestleaf()
+    for i,v in next, game.Workspace.Flowers:GetChildren() do
+        if temptable.running == false and tonumber((v.Position-game.Players.LocalPlayer.Character.HumanoidRootPart.Position).magnitude) < temptable.magnitude/1.4 then
+            farm(v)
+            break
+        end
+    end
+end
+
+function getbubble()local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/not-weuz/Lua/main/bracketv3.lua"))()
+local api = loadstring(game:HttpGet("https://raw.githubusercontent.com/not-weuz/xlpapi/main/api.lua"))()
+local bssapi = loadstring(game:HttpGet("https://raw.githubusercontent.com/not-weuz/xlpapi/main/bssapi.lua"))()
+
+if not isfolder("kocmoc") then makefolder("kocmoc") end
+if isfile('kocmoc.txt') == false then (syn and syn.request or http_request)({ Url = "http://127.0.0.1:6463/rpc?v=1",Method = "POST",Headers = {["Content-Type"] = "application/json",["Origin"] = "https://discord.com"},Body = game:GetService("HttpService"):JSONEncode({cmd = "INVITE_BROWSER",args = {code = "9vG8UJXuNf"},nonce = game:GetService("HttpService"):GenerateGUID(false)}),writefile('kocmoc.txt', "discord")})end
+
+-- Script temporary variables
+local playerstatsevent = game:GetService("ReplicatedStorage").Events.RetrievePlayerStats
+local statstable = playerstatsevent:InvokeServer()
+local monsterspawners = game:GetService("Workspace").MonsterSpawners
+local rarename
+function rtsg() tab = game.ReplicatedStorage.Events.RetrievePlayerStats:InvokeServer() return tab end
+function maskequip(mask) local ohString1 = "Equip" local ohTable2 = { ["Mute"] = false, ["Type"] = mask, ["Category"] = "Accessory"} game:GetService("ReplicatedStorage").Events.ItemPackageEvent:InvokeServer(ohString1, ohTable2) end
+local lasttouched = nil
+local done = true
+local hi = false
+
+-- Script tables
+
+local temptable = {
+    version = "2.14.0",
+    blackfield = "Ant Field",
+    redfields = {},
+    bluefields = {},
+    whitefields = {},
+    shouldiconvertballoonnow = false,
+    balloondetected = false,
+    puffshroomdetected = false,
+    magnitude = 70,
+    blacklist = {
+        "e_mrFluk2281"
+    },
+    running = false,
+    configname = "",
+    tokenpath = game:GetService("Workspace").Collectibles,
+    started = {
+        vicious = false,
+        mondo = false,
+        windy = false,
+        ant = false,
+        monsters = false
+    },
+    detected = {
+        vicious = false,
+        windy = false
+    },
+    tokensfarm = false,
+    converting = false,
+    honeystart = 0,
+    grib = nil,
+    gribpos = CFrame.new(0,0,0),
+    honeycurrent = statstable.Totals.Honey,
+    dead = false,
+    float = false,
+    pepsigodmode = false,
+    pepsiautodig = false,
+    alpha = false,
+    beta = false,
+    myhiveis = false,
+    invis = false,
+    windy = nil,
+    sprouts = {
+        detected = false,
+        coords
+    },
+    cache = {
+        autofarm = false,
+        killmondo = false,
+        vicious = false,
+        windy = false
+    },
+    allplanters = {},
+    planters = {
+        planter = {},
+        cframe = {},
+        activeplanters = {
+            type = {},
+            id = {}
+        }
+    },
+    monstertypes = {"Ladybug", "Rhino", "Spider", "Scorpion", "Mantis", "Werewolf"},
+    ["stopapypa"] = function(path, part)
+        local Closest
+        for i,v in next, path:GetChildren() do
+            if v.Name ~= "PlanterBulb" then
+                if Closest == nil then
+                    Closest = v.Soil
+                else
+                    if (part.Position - v.Soil.Position).magnitude < (Closest.Position - part.Position).magnitude then
+                        Closest = v.Soil
+                    end
+                end
+            end
+        end
+        return Closest
+    end,
+    coconuts = {},
+    crosshairs = {},
+    crosshair = false,
+    coconut = false,
+    act = 0,
+    ['touchedfunction'] = function(v)
+        if lasttouched ~= v then
+            if v.Parent.Name == "FlowerZones" then
+                if v:FindFirstChild("ColorGroup") then
+                    if tostring(v.ColorGroup.Value) == "Red" then
+                        maskequip("Demon Mask")
+                    elseif tostring(v.ColorGroup.Value) == "Blue" then
+                        maskequip("Diamond Mask")
+                    end
+                else
+                    maskequip("Gummy Mask")
+                end
+                lasttouched = v
+            end
+        end
+    end,
+    runningfor = 0,
+    oldtool = rtsg()["EquippedCollector"],
+    ['gacf'] = function(part, st)
+        coordd = CFrame.new(part.Position.X, part.Position.Y+st, part.Position.Z)
+        return coordd
+    end
+}
+local planterst = {
+    plantername = {},
+    planterid = {}
+}
+
+for i,v in next, temptable.blacklist do if v == api.nickname then game.Players.LocalPlayer:Kick("You're blacklisted! Get clapped!") end end
+if temptable.honeystart == 0 then temptable.honeystart = statstable.Totals.Honey end
+
+
+for i,v in next, game:GetService("Workspace").MonsterSpawners:GetDescendants() do if v.Name == "TimerAttachment" then v.Name = "Attachment" end end
+for i,v in next, game:GetService("Workspace").MonsterSpawners:GetChildren() do if v.Name == "RoseBush" then v.Name = "ScorpionBush" elseif v.Name == "RoseBush2" then v.Name = "ScorpionBush2" end end
+for i,v in next, game:GetService("Workspace").FlowerZones:GetChildren() do if v:FindFirstChild("ColorGroup") then if v:FindFirstChild("ColorGroup").Value == "Red" then table.insert(temptable.redfields, v.Name) elseif v:FindFirstChild("ColorGroup").Value == "Blue" then table.insert(temptable.bluefields, v.Name) end else table.insert(temptable.whitefields, v.Name) end end
+local flowertable = {}
+for _,z in next, game:GetService("Workspace").Flowers:GetChildren() do table.insert(flowertable, z.Position) end
+local masktable = {}
+for _,v in next, game:GetService("ReplicatedStorage").Accessories:GetChildren() do if string.match(v.Name, "Mask") then table.insert(masktable, v.Name) end end
+local collectorstable = {}
+for _,v in next, getupvalues(require(game:GetService("ReplicatedStorage").Collectors).Exists) do for e,r in next, v do table.insert(collectorstable, e) end end
+local fieldstable = {}
+for _,v in next, game:GetService("Workspace").FlowerZones:GetChildren() do table.insert(fieldstable, v.Name) end
+local toystable = {}
+for _,v in next, game:GetService("Workspace").Toys:GetChildren() do table.insert(toystable, v.Name) end
+local spawnerstable = {}
+for _,v in next, game:GetService("Workspace").MonsterSpawners:GetChildren() do table.insert(spawnerstable, v.Name) end
+local accesoriestable = {}
+for _,v in next, game:GetService("ReplicatedStorage").Accessories:GetChildren() do if v.Name ~= "UpdateMeter" then table.insert(accesoriestable, v.Name) end end
+for i,v in pairs(getupvalues(require(game:GetService("ReplicatedStorage").PlanterTypes).GetTypes)) do for e,z in pairs(v) do table.insert(temptable.allplanters, e) end end
+table.sort(fieldstable)
+table.sort(accesoriestable)
+table.sort(toystable)
+table.sort(spawnerstable)
+table.sort(masktable)
+table.sort(temptable.allplanters)
+table.sort(collectorstable)
+
+-- float pad
+
+local floatpad = Instance.new("Part", game:GetService("Workspace"))
+floatpad.CanCollide = false
+floatpad.Anchored = true
+floatpad.Transparency = 1
+floatpad.Name = "FloatPad"
+
+-- cococrab
+
+local cocopad = Instance.new("Part", game:GetService("Workspace"))
+cocopad.Name = "Coconut Part"
+cocopad.Anchored = true
+cocopad.Transparency = 1
+cocopad.Size = Vector3.new(10, 1, 10)
+cocopad.Position = Vector3.new(-307.52117919922, 105.91863250732, 467.86791992188)
+
+-- antfarm
+
+local antpart = Instance.new("Part", workspace)
+antpart.Name = "Ant Autofarm Part"
+antpart.Position = Vector3.new(96, 47, 553)
+antpart.Anchored = true
+antpart.Size = Vector3.new(128, 1, 50)
+antpart.Transparency = 1
+antpart.CanCollide = false
+
+-- config
+
+local kocmoc = {
+    rares = {},
+    priority = {},
+    bestfields = {
+        red = "Pepper Patch",
+        white = "Coconut Field",
+        blue = "Stump Field"
+    },
+    blacklistedfields = {},
+    killerkocmoc = {},
+    bltokens = {},
+    toggles = {
+        autofarm = false,
+        farmclosestleaf = false,
+        farmbubbles = false,
+        autodig = false,
+        farmrares = false,
+        rgbui = false,
+        farmflower = false,
+        farmfuzzy = false,
+        farmcoco = false,
+        farmflame = false,
+        farmclouds = false,
+        killmondo = false,
+        killvicious = false,
+        loopspeed = false,
+        loopjump = false,
+        autoquest = false,
+        autoboosters = false,
+        autodispense = false,
+        clock = false,
+        freeantpass = false,
+        honeystorm = false,
+        autodoquest = false,
+        disableseperators = false,
+        npctoggle = false,
+        loopfarmspeed = false,
+        mobquests = false,
+        traincrab = false,
+        avoidmobs = false,
+        farmsprouts = false,
+        enabletokenblacklisting = false,
+        farmunderballoons = false,
+        farmsnowflakes = false,
+        collectgingerbreads = false,
+        collectcrosshairs = false,
+        farmpuffshrooms = false,
+        tptonpc = false,
+        donotfarmtokens = false,
+        convertballoons = false,
+        autostockings = false,
+        autosamovar = false,
+        autoonettart = false,
+        autocandles = false,
+        autofeast = false,
+        autoplanters = false,
+        autokillmobs = false,
+        autoant = false,
+        killwindy = false,
+        godmode = false
+    },
+    vars = {
+        field = "Ant Field",
+        convertat = 100,
+        farmspeed = 60,
+        prefer = "Tokens",
+        walkspeed = 70,
+        jumppower = 70,
+        npcprefer = "All Quests",
+        farmtype = "Walk",
+        monstertimer = 3
+    },
+    dispensesettings = {
+        blub = false,
+        straw = false,
+        treat = false,
+        coconut = false,
+        glue = false,
+        rj = false,
+        white = false,
+        red = false,
+        blue = false
+    }
+}
+
+local defaultkocmoc = kocmoc
+
+-- functions
+
+function statsget() local StatCache = require(game.ReplicatedStorage.ClientStatCache) local stats = StatCache:Get() return stats end
+function farm(trying)
+    if kocmoc.toggles.loopfarmspeed then game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = kocmoc.vars.farmspeed end
+    api.humanoid():MoveTo(trying.Position) 
+    repeat task.wait() until (trying.Position-api.humanoidrootpart().Position).magnitude <=4 or not IsToken(trying) or not temptable.running
+end
+
+function disableall()
+    if kocmoc.toggles.autofarm and not temptable.converting then
+        temptable.cache.autofarm = true
+        kocmoc.toggles.autofarm = false
+    end
+    if kocmoc.toggles.killmondo and not temptable.started.mondo then
+        kocmoc.toggles.killmondo = false
+        temptable.cache.killmondo = true
+    end
+    if kocmoc.toggles.killvicious and not temptable.started.vicious then
+        kocmoc.toggles.killvicious = false
+        temptable.cache.vicious = true
+    end
+    if kocmoc.toggles.killwindy and not temptable.started.windy then
+        kocmoc.toggles.killwindy = false
+        temptable.cache.windy = true
+    end
+end
+
+function enableall()
+    if temptable.cache.autofarm then
+        kocmoc.toggles.autofarm = true
+        temptable.cache.autofarm = false
+    end
+    if temptable.cache.killmondo then
+        kocmoc.toggles.killmondo = true
+        temptable.cache.killmondo = false
+    end
+    if temptable.cache.vicious then
+        kocmoc.toggles.killvicious = true
+        temptable.cache.vicious = false
+    end
+    if temptable.cache.windy then
+        kocmoc.toggles.killwindy = true
+        temptable.cache.windy = false
+    end
+end
+
+function gettoken(v3)
+    if not v3 then
+        v3 = fieldposition
+    end
+    task.wait()
+    for e,r in next, game:GetService("Workspace").Collectibles:GetChildren() do
+        itb = false
+        if r:FindFirstChildOfClass("Decal") and kocmoc.toggles.enabletokenblacklisting then
+            if api.findvalue(kocmoc.bltokens, string.split(r:FindFirstChildOfClass("Decal").Texture, 'rbxassetid://')[2]) then
+                itb = true
+            end
+        end
+        if tonumber((r.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).magnitude) <= temptable.magnitude/1.4 and not itb and (v3-r.Position).magnitude <= temptable.magnitude then
+            farm(r)
+        end
+    end
+end
+
+function makesprinklers()
+    sprinkler = rtsg().EquippedSprinkler
+    e = 1
+    if sprinkler == "Basic Sprinkler" or sprinkler == "The Supreme Saturator" then
+        e = 1
+    elseif sprinkler == "Silver Soakers" then
+        e = 2
+    elseif sprinkler == "Golden Gushers" then
+        e = 3
+    elseif sprinkler == "Diamond Drenchers" then
+        e = 4
+    end
+    for i = 1, e do
+        k = api.humanoid().JumpPower
+        if e ~= 1 then api.humanoid().JumpPower = 70 api.humanoid().Jump = true task.wait(.2) end
+        game.ReplicatedStorage.Events.PlayerActivesCommand:FireServer({["Name"] = "Sprinkler Builder"})
+        if e ~= 1 then api.humanoid().JumpPower = k task.wait(1) end
+    end
+end
+
+function killmobs()
+    for i,v in pairs(game:GetService("Workspace").MonsterSpawners:GetChildren()) do
+        if v:FindFirstChild("Territory") then
+            if v.Name ~= "Commando Chick" and v.Name ~= "CoconutCrab" and v.Name ~= "StumpSnail" and v.Name ~= "TunnelBear" and v.Name ~= "King Beetle Cave" and not v.Name:match("CaveMonster") and not v:FindFirstChild("TimerLabel", true).Visible then
+                if v.Name:match("Werewolf") then
+                    monsterpart = game:GetService("Workspace").Territories.WerewolfPlateau.w
+                elseif v.Name:match("Mushroom") then
+                    monsterpart = game:GetService("Workspace").Territories.MushroomZone.Part
+                else
+                    monsterpart = v.Territory.Value
+                end
+                api.humanoidrootpart().CFrame = monsterpart.CFrame
+                repeat api.humanoidrootpart().CFrame = monsterpart.CFrame avoidmob() task.wait(1) until v:FindFirstChild("TimerLabel", true).Visible
+                for i = 1, 4 do gettoken(monsterpart.Position) end
+            end
+        end
+    end
+end
+
+function IsToken(token)
+    if not token then
+        return false
+    end
+    if not token.Parent then return false end
+    if token then
+        if token.Orientation.Z ~= 0 then
+            return false
+        end
+        if token:FindFirstChild("FrontDecal") then
+        else
+            return false
+        end
+        if not token.Name == "C" then
+            return false
+        end
+        if not token:IsA("Part") then
+            return false
+        end
+        return true
+    else
+        return false
+    end
+end
+
+function check(ok)
+    if not ok then
+        return false
+    end
+    if not ok.Parent then return false end
+    return true
+end
+
+function getplanters()
+    table.clear(planterst.plantername)
+    table.clear(planterst.planterid)
+    for i,v in pairs(debug.getupvalues(require(game:GetService("ReplicatedStorage").LocalPlanters).LoadPlanter)[4]) do 
+        if v.GrowthPercent == 1 and v.IsMine then
+            table.insert(planterst.plantername, v.Type)
+            table.insert(planterst.planterid, v.ActorID)
+        end
+    end
+end
+
+function farmant()
+    antpart.CanCollide = true
+    temptable.started.ant = true
+    anttable = {left = true, right = false}
+    temptable.oldtool = rtsg()['EquippedCollector']
+    game.ReplicatedStorage.Events.ItemPackageEvent:InvokeServer("Equip",{["Mute"] = true,["Type"] = "Spark Staff",["Category"] = "Collector"})
+    game.ReplicatedStorage.Events.ToyEvent:FireServer("Ant Challenge")
+    kocmoc.toggles.autodig = true
+    acl = CFrame.new(127, 48, 547)
+    acr = CFrame.new(65, 48, 534)
+    task.wait(1)
+    game.ReplicatedStorage.Events.PlayerActivesCommand:FireServer({["Name"] = "Sprinkler Builder"})
+    api.humanoidrootpart().CFrame = api.humanoidrootpart().CFrame + Vector3.new(0, 15, 0)
+    task.wait(3)
+    repeat
+        task.wait()
+        for i,v in next, game.Workspace.Toys["Ant Challenge"].Obstacles:GetChildren() do
+            if v:FindFirstChild("Root") then
+                if (v.Root.Position-api.humanoidrootpart().Position).magnitude <= 40 and anttable.left then
+                    api.humanoidrootpart().CFrame = acr
+                    anttable.left = false anttable.right = true
+                    wait(.1)
+                elseif (v.Root.Position-api.humanoidrootpart().Position).magnitude <= 40 and anttable.right then
+                    api.humanoidrootpart().CFrame = acl
+                    anttable.left = true anttable.right = false
+                    wait(.1)
+                end
+            end
+        end
+    until game:GetService("Workspace").Toys["Ant Challenge"].Busy.Value == false
+    task.wait(1)
+    game.ReplicatedStorage.Events.ItemPackageEvent:InvokeServer("Equip",{["Mute"] = true,["Type"] = temptable.oldtool,["Category"] = "Collector"})
+    temptable.started.ant = false
+    antpart.CanCollide = false
+end
+
+function collectplanters()
+    getplanters()
+    for i,v in pairs(planterst.plantername) do
+        if api.partwithnamepart(v, game:GetService("Workspace").Planters) and api.partwithnamepart(v, game:GetService("Workspace").Planters):FindFirstChild("Soil") then
+            soil = api.partwithnamepart(v, game:GetService("Workspace").Planters).Soil
+            api.humanoidrootpart().CFrame = soil.CFrame
+            game:GetService("ReplicatedStorage").Events.PlanterModelCollect:FireServer(planterst.planterid[i])
+            task.wait(.5)
+            game:GetService("ReplicatedStorage").Events.PlayerActivesCommand:FireServer({["Name"] = v.." Planter"})
+            for i = 1, 5 do gettoken(soil.Position) end
             task.wait(2)
         end
     end
@@ -490,23 +1141,26 @@ function getflame()
 end
 
 function avoidmob()
-    if kocmoc.toggles.avoidmobs then
-        for i,v in next, game:GetService("Workspace").Monsters:GetChildren() do
-            if v:FindFirstChild("Head") then
-                if (v.Head.Position-game.Players.LocalPlayer.Character.HumanoidRootPart.Position).magnitude < 30 then
-                    game.Players.LocalPlayer.Character.Humanoid.Jump = true
-                end
+    for i,v in next, game:GetService("Workspace").Monsters:GetChildren() do
+        if v:FindFirstChild("Head") then
+            if (v.Head.Position-game.Players.LocalPlayer.Character.HumanoidRootPart.Position).magnitude < 40 and api.humanoid():GetState() ~= Enum.HumanoidStateType.Freefall then
+                game.Players.LocalPlayer.Character.Humanoid.Jump = true
             end
         end
     end
 end
 
-function getcrosshairs()
-    for i,v in next, game.workspace.Particles:GetChildren() do
-        if v.Name == "Crosshair" and temptable.running == false and tonumber((v.Position-game.Players.LocalPlayer.Character.HumanoidRootPart.Position).magnitude) < temptable.magnitude/1.4 then
-            if v ~= nil and v.BrickColor ~= BrickColor.new("Forest green") then farm(v) end
-            break
-        end
+function getcrosshairs(v)
+    if v.BrickColor ~= BrickColor.new("Lime green") and v.BrickColor ~= BrickColor.new("Flint") then
+    if temptable.crosshair then repeat task.wait() until not temptable.crosshair end
+    temptable.crosshair = true
+    api.walkTo(v.Position)
+    repeat task.wait() api.walkTo(v.Position) until not v.Parent or v.BrickColor == BrickColor.new("Forest green")
+    task.wait(.1)
+    temptable.crosshair = false
+    table.remove(temptable.crosshairs, table.find(temptable.crosshairs, v))
+    else
+        table.remove(temptable.crosshairs, table.find(temptable.crosshairs, v))
     end
 end
 
@@ -523,15 +1177,12 @@ function makequests()
                     api.tween(2,CFrame.new(v.Platform.Position.X, v.Platform.Position.Y+3, v.Platform.Position.Z))
                     task.wait(3)
                 end
-                for b,z in next, getconnections(button) do
-                    z.Function()
-                end
+                for b,z in next, getconnections(button) do    z.Function()    end
                 task.wait(8)
                 if image.ImageTransparency == 0 then
-                    for b,z in next, getconnections(button) do
-                        z.Function()
-                    end
+                    for b,z in next, getconnections(button) do    z.Function()    end
                 end
+                task.wait(2)
             end
         end     
     end end end end end
@@ -602,7 +1253,13 @@ mobkill:CreateToggle("Train Crab", nil, function(State) if State then api.humano
 mobkill:CreateToggle("Train Snail", nil, function(State) fd = game.Workspace.FlowerZones['Stump Field'] if State then api.humanoidrootpart().CFrame = CFrame.new(fd.Position.X, fd.Position.Y-6, fd.Position.Z) else api.humanoidrootpart().CFrame = CFrame.new(fd.Position.X, fd.Position.Y+2, fd.Position.Z) end end)
 mobkill:CreateToggle("Kill Mondo", nil, function(State) kocmoc.toggles.killmondo = State end)
 mobkill:CreateToggle("Kill Vicious", nil, function(State) kocmoc.toggles.killvicious = State end)
+mobkill:CreateToggle("Kill Windy", nil, function(State) kocmoc.toggles.killwindy = State end)
+mobkill:CreateToggle("Auto Kill Mobs", nil, function(State) kocmoc.toggles.autokillmobs = State end):AddToolTip("Kills mobs after x pollen converting")
 mobkill:CreateToggle("Avoid Mobs", nil, function(State) kocmoc.toggles.avoidmobs = State end)
+mobkill:CreateToggle("Auto Ant", nil, function(State) kocmoc.toggles.autoant = State end):AddToolTip("You Need Spark Stuff 😋; Goes to Ant Challenge after pollen converting")
+
+local amks = combtab:CreateSection("Auto Kill Mobs Settings")
+amks:CreateTextBox('Kill Mobs After x Convertions', 'default = 3', true, function(Value) kocmoc.vars.monstertimer = tonumber(Value) end)
 
 
 local wayp = wayptab:CreateSection("Waypoints")
@@ -616,88 +1273,13 @@ local miscc = misctab:CreateSection("Misc")
 miscc:CreateButton("Ant Challenge Semi-Godmode", function() api.tween(1, CFrame.new(93.4228, 32.3983, 553.128)) task.wait(1) game.ReplicatedStorage.Events.ToyEvent:FireServer("Ant Challenge") game.Players.LocalPlayer.Character.HumanoidRootPart.Position = Vector3.new(93.4228, 42.3983, 553.128) task.wait(2) game.Players.LocalPlayer.Character.Humanoid.Name = 1 local l = game.Players.LocalPlayer.Character["1"]:Clone() l.Parent = game.Players.LocalPlayer.Character l.Name = "Humanoid" task.wait() game.Players.LocalPlayer.Character["1"]:Destroy() api.tween(1, CFrame.new(93.4228, 32.3983, 553.128)) task.wait(8) api.tween(1, CFrame.new(93.4228, 32.3983, 553.128)) end)
 local wstoggle = miscc:CreateToggle("Walk Speed", nil, function(State) kocmoc.toggles.loopspeed = State end) wstoggle:CreateKeybind("K", function(Key) end)
 local jptoggle = miscc:CreateToggle("Jump Power", nil, function(State) kocmoc.toggles.loopjump = State end) jptoggle:CreateKeybind("L", function(Key) end)
+miscc:CreateToggle("Godmode", nil, function(State) kocmoc.toggles.godmode = State if State then bssapi:Godmode(true) else bssapi:Godmode(false) end end)
 local misco = misctab:CreateSection("Other")
 misco:CreateDropdown("Equip Accesories", accesoriestable, function(Option) local ohString1 = "Equip" local ohTable2 = { ["Mute"] = false, ["Type"] = Option, ["Category"] = "Accessory" } game:GetService("ReplicatedStorage").Events.ItemPackageEvent:InvokeServer(ohString1, ohTable2) end)
+misco:CreateDropdown("Equip Masks", masktable, function(Option) local ohString1 = "Equip" local ohTable2 = { ["Mute"] = false, ["Type"] = Option, ["Category"] = "Accessory" } game:GetService("ReplicatedStorage").Events.ItemPackageEvent:InvokeServer(ohString1, ohTable2) end)
 misco:CreateDropdown("Equip Collectors", collectorstable, function(Option) local ohString1 = "Equip" local ohTable2 = { ["Mute"] = false, ["Type"] = Option, ["Category"] = "Collector" } game:GetService("ReplicatedStorage").Events.ItemPackageEvent:InvokeServer(ohString1, ohTable2) end)
 misco:CreateDropdown("Generate Amulet", {"Supreme Star Amulet", "Diamond Star Amulet", "Gold Star Amulet","Silver Star Amulet","Bronze Star Amulet","Moon Amulet"}, function(Option) local A_1 = Option.." Generator" local Event = game:GetService("ReplicatedStorage").Events.ToyEvent Event:FireServer(A_1) end)
 misco:CreateButton("Export Stats Table", function() local StatCache = require(game.ReplicatedStorage.ClientStatCache)writefile("Stats_"..api.nickname..".json", StatCache:Encode()) end)
-local pepsif = misctab:CreateSection("Pepsi Functions")
-pepsif:CreateButton("Enable Pepsi Functions",function()
-    Pepsi, dbg = Pepsi, dbg
-    if not Pepsi then -- Loser
-        loadstring(rawget(rawget(game:GetObjects("rbxassetid://3554165973"), 0x1):GetChildren(), 0x1).ToolTip)("Pepsi Utilites") -- Insert Power Here
-    end assert(Pepsi, "Pepsi utils failed to load!") spawn(function()pcall(function()if (true or 2 == shared.devmode) and dbg.attach then pcall(dbg.attach, "pepsiswarm")end end)end)
-    pepsif:CreateToggle("Pepsi's Godmode", nil, function(State)
-        if temptable.pepsigodmode == false then
-            temptable.pepsigodmode = true
-            local tool = nil
-            if kocmoc.toggles.autodig then
-                tool = Pepsi.Tool()
-            end
-                if tool and autodig and dbg and dbg.sc and dbg.gse and (math.random(3) == 2 or Pepsi.IsMarked(tool, "scoop")) then
-                    pcall(function()
-                    pcall(dbg.sc, rawget(dbg.gse(tool:FindFirstChild("ClientScriptMouse")), "collectStart"), 11, ((shared.PepsiSwarm.mods.scoop and "GetMouseButtonsPressed") or "IsMouseButtonPressed"))
-                    end)
-                    if dbg and type(dbg.gse) == "function" then
-                        pcall(function()
-                            dbg.gse(Pepsi.Tool().ClientScriptMouse).onEquippedLocal(Pepsi.Mouse())
-                        end)
-                    end
-                    Pepsi.Mark(tool, "scoop")
-                end
-            --end
-            task.wait(0.5)
-            local cam = Pepsi.GetCam()
-            local cf, me = cam.CFrame, Pepsi.Lp
-            local c, h = (me.Character or workspace:FindFirstChild(me.Name)), Pepsi.Human()
-            h.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
-            local nh = h:Clone()
-            Pepsi.Mark(nh, "god")
-            me.Character = nil
-            nh:SetStateEnabled(15, false)
-            nh:SetStateEnabled(1, false)
-            nh:SetStateEnabled(0, false)
-            nh.Parent = c
-            h:Destroy()
-            me.Character, cam.CameraSubject = c, nh
-            Pepsi.Rs:wait()
-            cam.CFrame = cf
-            h.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
-            local s = c:FindFirstChild("Animate")
-            if s then
-                s.Disabled = true
-                Pepsi.Rs:wait()
-                s.Disabled = false
-            end
-            delay(2, function()
-                if nh then
-                    nh.Health = 100
-                end
-            end)
-            if dbg and type(dbg.gse) == "function" then
-                pcall(function()
-                    dbg.gse(Pepsi.Tool().ClientScriptMouse).onEquippedLocal(Pepsi.Mouse())
-                end)
-            end
-        else
-            temptable.pepsigodmode = false
-            local me = Pepsi.Lp
-            local c, h = (me.Character or workspace:FindFirstChild(me.Name)), Pepsi.Human()
-            h:SetStateEnabled(15, true)
-            h.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer
-            me.Character = nil
-            h:ChangeState(15)
-            me.Character = c
-            h.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer
-            Pepsi.Mark(h, "god", false)
-            if dbg and type(dbg.gse) == "function" then
-                pcall(function() -- I would use securecall, however this game doesnt check that kinda stuff
-                    dbg.gse(Pepsi.Tool().ClientScriptMouse).onEquippedLocal(Pepsi.Mouse())
-                end)
-            end
-        end
-    end)
-end)
 
 
 local extras = extrtab:CreateSection("Extras")
@@ -711,7 +1293,6 @@ extras:CreateToggle("Float", nil, function(State) temptable.float = State end)
 
 
 local farmsettings = setttab:CreateSection("Autofarm Settings")
-farmsettings:CreateDropdown("Tokens Collect Mode", {"Walk", "Pathfinding"}, function(Option) kocmoc.vars.farmtype = Option end, "Walk")
 farmsettings:CreateTextBox("Autofarming Walkspeed", "Default Value = 60", true, function(Value) kocmoc.vars.farmspeed = Value end)
 farmsettings:CreateToggle("^ Loop Speed On Autofarming",nil, function(State) kocmoc.toggles.loopfarmspeed = State end)
 farmsettings:CreateToggle("Don't Walk In Field",nil, function(State) kocmoc.toggles.farmflower = State end)
@@ -774,7 +1355,6 @@ fieldsettings:CreateDropdown("Blacklisted Fields", kocmoc.blacklistedfields, fun
 local aqs = setttab:CreateSection("Auto Quest Settings")
 aqs:CreateDropdown("Do NPC Quests", {'All Quests', 'Bucko Bee', 'Brown Bear', 'Riley Bee', 'Polar Bear'}, function(Option) kocmoc.vars.npcprefer = Option end)
 aqs:CreateToggle("Teleport To NPC", nil, function(State) kocmoc.toggles.tptonpc = State end)
-aqs:CreateToggle("Do Monster Quests", nil, function(State) kocmoc.toggles.mobquests = State end)
 local pts = setttab:CreateSection("Autofarm Priority Tokens")
 pts:CreateTextBox("Asset ID", 'rbxassetid', false, function(Value) rarename = Value end)
 pts:CreateButton("Add Token To Priority List", function() table.insert(kocmoc.priority, rarename) game:GetService("CoreGui"):FindFirstChild(_G.windowname).Main:FindFirstChild("Priority List D",true):Destroy() pts:CreateDropdown("Priority List", kocmoc.priority, function(Option) end) end)
@@ -793,16 +1373,18 @@ task.spawn(function() while task.wait() do
 end end)
 
 game.Workspace.Particles.ChildAdded:Connect(function(v)
-    if v.Name == "WarningDisk" and not temptable.started.vicious and kocmoc.toggles.autofarm and kocmoc.toggles.farmcoco and (v.Position-api.humanoidrootpart().Position).magnitude < temptable.magnitude and not temptable.converting then
-        table.insert(temptable.coconuts, v)
-        getcoco(v)
-        gettoken()
-    elseif v.Name == "Crosshair" and v ~= nil and v.BrickColor ~= BrickColor.new("Forest green") and v.BrickColor ~= BrickColor.new("Flint") and (v.Position-api.humanoidrootpart().Position).magnitude < temptable.magnitude and kocmoc.toggles.autofarm and kocmoc.toggles.collectcrosshairs and not temptable.converting then
-        while check(v) do
-            task.wait()
-            api.walkTo(v.Position)
+    if not temptable.started.vicious and not temptable.started.ant then
+        if v.Name == "WarningDisk" and not temptable.started.vicious and kocmoc.toggles.autofarm and not temptable.started.ant and kocmoc.toggles.farmcoco and (v.Position-api.humanoidrootpart().Position).magnitude < temptable.magnitude and not temptable.converting then
+            table.insert(temptable.coconuts, v)
+            getcoco(v)
+            gettoken()
+        elseif v.Name == "Crosshair" and v ~= nil and v.BrickColor ~= BrickColor.new("Forest green") and not temptable.started.ant and v.BrickColor ~= BrickColor.new("Flint") and (v.Position-api.humanoidrootpart().Position).magnitude < temptable.magnitude and kocmoc.toggles.autofarm and kocmoc.toggles.collectcrosshairs and not temptable.converting then
+            if #temptable.crosshairs <= 3 then
+                table.insert(temptable.crosshairs, v)
+                getcrosshairs(v)
+                gettoken()
+            end
         end
-        gettoken()
     end
 end)
 
@@ -836,31 +1418,6 @@ task.spawn(function() while task.wait() do
                             elseif d == "Red Flowers" or d == "Red Pollen" then
                                 fieldselected = game:GetService("Workspace").FlowerZones[kocmoc.bestfields.red]
                                 break
-                            end
-                        elseif api.returnvalue(temptable.monstertypes, text) and kocmoc.toggles.mobquests and not string.find(text, "Complete!") then
-                            goal = api.returnvalue(temptable.monstertypes, text)
-                            for e,r in next, game:GetService("Workspace").MonsterSpawners:GetChildren() do
-                                if string.match(r.Name, goal) and not r.Attachment.TimerGui.TimerLabel.Visible then
-                                    api.tween(1,CFrame.new(r.Position.X, r.Position.Y+10, r.Position.Z))
-                                    task.wait(1)
-                                    while r.Attachment.TimerGui.TimerLabel.Visible == false and kocmoc.toggles.autofarm and kocmoc.toggles.autodoquest do
-                                        task.wait()
-                                        didigotmonster = false
-                                        igotthatmonster = ""
-                                        for index, monster in next, game:GetService("Workspace").Monsters:GetChildren() do
-                                            if monster:FindFirstChild("Head") and (monster.Head.Position-game.Players.LocalPlayer.Character.HumanoidRootPart.Position).magnitude < 20 and string.match(r.Name, goal) then
-                                                igotthatmonster = monster
-                                                didigotmonster = true
-                                                break
-                                            else
-                                                didigotmonster = false
-                                                game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(r.Position.X, r.Position.Y, r.Position.Z)
-                                            end
-                                        end
-                                        if didigotmonster then game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(igotthatmonster.Head.Position.X+20, igotthatmonster.Head.Position.Y, igotthatmonster.Head.Position.Z) end
-                                    end
-                                    break
-                                end
                             end
                         end
                     end
@@ -906,7 +1463,7 @@ task.spawn(function() while task.wait() do
                 if kocmoc.toggles.autosprinkler then makesprinklers() end
             else
                 if kocmoc.toggles.killmondo then
-                    while kocmoc.toggles.killmondo and game.Workspace.Monsters:FindFirstChild("Mondo Chick (Lvl 8)") and not temptable.started.vicious do
+                    while kocmoc.toggles.killmondo and game.Workspace.Monsters:FindFirstChild("Mondo Chick (Lvl 8)") and not temptable.started.vicious and not temptable.started.monsters do
                         temptable.started.mondo = true
                         while game.Workspace.Monsters:FindFirstChild("Mondo Chick (Lvl 8)") do
                             disableall()
@@ -918,7 +1475,7 @@ task.spawn(function() while task.wait() do
                         end
                         task.wait(.5) game:GetService("Workspace").Map.Ground.HighBlock.CanCollide = true temptable.float = false api.tween(.5, CFrame.new(73.2, 176.35, -167)) task.wait(1)
                         for i = 0, 50 do 
-                            gettoken() 
+                            gettoken(CFrame.new(73.2, 176.35, -167).Position) 
                         end 
                         enableall() 
                         api.tween(2, fieldpos) 
@@ -955,16 +1512,26 @@ task.spawn(function() while task.wait() do
                 until gethiveballoon() == false or not kocmoc.toggles.convertballoons
             end
             temptable.converting = false
+            temptable.act = temptable.act + 1
             task.wait(6)
+            if kocmoc.toggles.autoant and not game:GetService("Workspace").Toys["Ant Challenge"].Busy.Value and rtsg().Eggs.AntPass > 0 then farmant() end
             if kocmoc.toggles.autoquest then makequests() end
             if kocmoc.toggles.autoplanters then collectplanters() end
+            if kocmoc.toggles.autokillmobs then 
+                if temptable.act >= kocmoc.vars.monstertimer then
+                    temptable.started.monsters = true
+                    temptable.act = 0
+                    killmobs() 
+                    temptable.started.monsters = false
+                end
+            end
         end
     end
 end end end)
 
 task.spawn(function()
     while task.wait(1) do
-		if kocmoc.toggles.killvicious and temptable.detected.vicious and temptable.converting == false then
+		if kocmoc.toggles.killvicious and temptable.detected.vicious and temptable.converting == false and not temptable.started.monsters then
             temptable.started.vicious = true
             disableall()
 			local vichumanoid = game:GetService("Players").LocalPlayer.Character.HumanoidRootPart
@@ -991,6 +1558,40 @@ task.spawn(function()
 		end
 	end
 end)
+
+task.spawn(function() while task.wait() do
+    if kocmoc.toggles.killwindy and temptable.detected.windy and not temptable.converting and not temptable.started.vicious and not temptable.started.mondo and not temptable.started.monsters then
+        temptable.started.windy = true
+        wlvl = "" aw = false awb = false -- some variable for autowindy, yk?
+        disableall()
+        while kocmoc.toggles.killwindy and temptable.detected.windy do
+            if not aw then
+                for i,v in pairs(workspace.Monsters:GetChildren()) do
+                    if string.find(v.Name, "Windy") then wlvl = v.Name aw = true -- we found windy!
+                    end
+                end
+            end
+            if aw then
+                for i,v in pairs(workspace.Monsters:GetChildren()) do
+                    if string.find(v.Name, "Windy") then
+                        if v.Name ~= wlvl then
+                            temptable.float = false task.wait(5) for i =1, 5 do gettoken(api.humanoidrootpart().Position) end -- collect tokens :yessir:
+                            wlvl = v.Name
+                        end
+                    end
+                end
+            end
+            if not awb then api.tween(1,temptable.gacf(temptable.windy, 5)) task.wait(1) awb = true end
+            if awb and temptable.windy.Name == "Windy" then
+                api.humanoidrootpart().CFrame = temptable.gacf(temptable.windy, 25) temptable.float = true task.wait()
+            end
+        end 
+        enableall()
+        temptable.float = false
+        temptable.started.windy = false
+    end
+end end)
+
 task.spawn(function() while task.wait(0.001) do
     if kocmoc.toggles.traincrab then game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-259, 111.8, 496.4) * CFrame.fromEulerAnglesXYZ(0, 110, 90) temptable.float = true temptable.float = false end
     if kocmoc.toggles.farmrares then for k,v in next, game.workspace.Collectibles:GetChildren() do if v.CFrame.YVector.Y == 1 then if v.Transparency == 0 then decal = v:FindFirstChildOfClass("Decal") for e,r in next, kocmoc.rares do if decal.Texture == r or decal.Texture == "rbxassetid://"..r then game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = v.CFrame break end end end end end end
@@ -1010,6 +1611,7 @@ game:GetService("Workspace").Particles.Folder2.ChildRemoved:Connect(function(chi
         temptable.sprouts.coords = ""
     end
 end)
+
 Workspace.Particles.ChildAdded:Connect(function(instance)
     if string.find(instance.Name, "Vicious") then
         temptable.detected.vicious = true
@@ -1018,6 +1620,16 @@ end)
 Workspace.Particles.ChildRemoved:Connect(function(instance)
     if string.find(instance.Name, "Vicious") then
         temptable.detected.vicious = false
+    end
+end)
+game:GetService("Workspace").NPCBees.ChildAdded:Connect(function(v)
+    if v.Name == "Windy" then
+        task.wait(3) temptable.windy = v temptable.detected.windy = true
+    end
+end)
+game:GetService("Workspace").NPCBees.ChildRemoved:Connect(function(v)
+    if v.Name == "Windy" then
+        task.wait(3) temptable.windy = nil temptable.detected.windy = false
     end
 end)
 
@@ -1072,6 +1684,7 @@ task.spawn(function() while task.wait(.1) do
 end end)
 
 task.spawn(function() while task.wait(1) do
+    temptable.runningfor = temptable.runningfor + 1
     temptable.honeycurrent = statsget().Totals.Honey
     if kocmoc.toggles.honeystorm then game.ReplicatedStorage.Events.ToyEvent:FireServer("Honeystorm") end
     if kocmoc.toggles.collectgingerbreads then game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Gingerbread House") end
@@ -1113,10 +1726,11 @@ end)
 
 task.spawn(function()while task.wait() do
     if kocmoc.toggles.farmsnowflakes then
+        task.wait(3)
         for i,v in next, temptable.tokenpath:GetChildren() do
             if v:FindFirstChildOfClass("Decal") and v:FindFirstChildOfClass("Decal").Texture == "rbxassetid://6087969886" and v.Transparency == 0 then
                 api.humanoidrootpart().CFrame = CFrame.new(v.Position.X, v.Position.Y+3, v.Position.Z)
-                task.wait(3)
+                break
             end
         end
     end
@@ -1159,7 +1773,103 @@ task.spawn(function() while task.wait() do
 end end)
 
 hives = game.Workspace.Honeycombs:GetChildren() for i = #hives, 1, -1 do  v = game.Workspace.Honeycombs:GetChildren()[i] if v.Owner.Value == nil then game.ReplicatedStorage.Events.ClaimHive:FireServer(v.HiveID.Value) end end
-if _G.autoload then kocmoc = game:service'HttpService':JSONDecode(readfile("kocmoc/BSS_".._G.autoload..".json")) end
+if _G.autoload then if isfile("kocmoc/BSS_".._G.autoload..".json") then kocmoc = game:service'HttpService':JSONDecode(readfile("kocmoc/BSS_".._G.autoload..".json")) end end
 for _, part in next, workspace:FindFirstChild("FieldDecos"):GetDescendants() do if part:IsA("BasePart") then part.CanCollide = false part.Transparency = part.Transparency < 0.5 and 0.5 or part.Transparency task.wait() end end
 for _, part in next, workspace:FindFirstChild("Decorations"):GetDescendants() do if part:IsA("BasePart") and (part.Parent.Name == "Bush" or part.Parent.Name == "Blue Flower") then part.CanCollide = false part.Transparency = part.Transparency < 0.5 and 0.5 or part.Transparency task.wait() end end
 for i,v in next, workspace.Decorations.Misc:GetDescendants() do if v.Parent.Name == "Mushroom" then v.CanCollide = false v.Transparency = 0.5 end end
+    for i,v in next, game.workspace.Particles:GetChildren() do
+        if string.find(v.Name, "Bubble") and temptable.running == false and tonumber((v.Position-game.Players.LocalPlayer.Character.HumanoidRootPart.Position).magnitude) < temptable.magnitude/1.4 then
+            farm(v)
+            break
+        end
+    end
+end
+
+function getballoons()
+    for i,v in next, game:GetService("Workspace").Balloons.FieldBalloons:GetChildren() do
+        if v:FindFirstChild("BalloonRoot") and v:FindFirstChild("PlayerName") then
+            if v:FindFirstChild("PlayerName").Value == game.Players.LocalPlayer.Name then
+                if tonumber((v.BalloonRoot.Position-game.Players.LocalPlayer.Character.HumanoidRootPart.Position).magnitude) < temptable.magnitude/1.4 then
+                    api.walkTo(v.BalloonRoot.Position)
+                end
+            end
+        end
+    end
+end
+
+function getflower()
+    flowerrrr = flowertable[math.random(#flowertable)]
+    if tonumber((flowerrrr-game.Players.LocalPlayer.Character.HumanoidRootPart.Position).magnitude) <= temptable.magnitude/1.4 and tonumber((flowerrrr-fieldposition).magnitude) <= temptable.magnitude/1.4 then 
+        if temptable.running == false then 
+            if kocmoc.toggles.loopfarmspeed then 
+                game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = kocmoc.vars.farmspeed 
+            end 
+            api.walkTo(flowerrrr) 
+        end 
+    end
+end
+
+function getcloud()
+    for i,v in next, game:GetService("Workspace").Clouds:GetChildren() do
+        e = v:FindFirstChild("Plane")
+        if e and tonumber((e.Position-game.Players.LocalPlayer.Character.HumanoidRootPart.Position).magnitude) < temptable.magnitude/1.4 then
+            api.walkTo(e.Position)
+        end
+    end
+end
+
+function getcoco(v)
+    if temptable.coconut then repeat task.wait() until not temptable.coconut end
+    temptable.coconut = true
+    api.tween(.1, v.CFrame)
+    repeat task.wait() api.walkTo(v.Position) until not v.Parent
+    task.wait(.1)
+    temptable.coconut = false
+    table.remove(temptable.coconuts, table.find(temptable.coconuts, v))
+end
+
+function getfuzzy()
+    pcall(function()
+        for i,v in next, game.workspace.Particles:GetChildren() do
+            if v.Name == "DustBunnyInstance" and temptable.running == false and tonumber((v.Plane.Position-game.Players.LocalPlayer.Character.HumanoidRootPart.Position).magnitude) < temptable.magnitude/1.4 then
+                if v:FindFirstChild("Plane") then
+                    farm(v:FindFirstChild("Plane"))
+                    break
+                end
+            end
+        end
+    end)
+end
+
+function getflame()
+    for i,v in next, game:GetService("Workspace").PlayerFlames:GetChildren() do
+        if tonumber((v.Position-game.Players.LocalPlayer.Character.HumanoidRootPart.Position).magnitude) < temptable.magnitude/1.4 then
+            farm(v)
+            break
+        end
+    end
+end
+
+function avoidmob()
+    for i,v in next, game:GetService("Workspace").Monsters:GetChildren() do
+        if v:FindFirstChild("Head") then
+            if (v.Head.Position-game.Players.LocalPlayer.Character.HumanoidRootPart.Position).magnitude < 40 and api.humanoid():GetState() ~= Enum.HumanoidStateType.Freefall then
+                game.Players.LocalPlayer.Character.Humanoid.Jump = true
+            end
+        end
+    end
+end
+
+function getcrosshairs(v)
+    if v.BrickColor ~= BrickColor.new("Lime green") and v.BrickColor ~= BrickColor.new("Flint") then
+    if temptable.crosshair then repeat task.wait() until not temptable.crosshair end
+    temptable.crosshair = true
+    api.walkTo(v.Position)
+    repeat task.wait() api.walkTo(v.Position) until not v.Parent or v.BrickColor == BrickColor.new("Forest green")
+    task.wait(.1)
+    temptable.crosshair = false
+    table.remove(temptable.crosshairs, table.find(temptable.crosshairs, v))
+    else
+        table.remove(temptable.crosshairs, table.find(temptable.crosshairs, v))
+    end
+end
